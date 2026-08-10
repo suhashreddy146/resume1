@@ -59,6 +59,25 @@ def _client() -> OpenAI:
     )
 
 
+def _parse_json(raw: str) -> dict:
+    """Parse LLM output, tolerating markdown fences or surrounding text."""
+    raw = (raw or "").strip()
+    if not raw:
+        return {}
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        pass
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start != -1 and end > start:
+        try:
+            return json.loads(raw[start : end + 1])
+        except json.JSONDecodeError:
+            pass
+    return {}
+
+
 def analyse_resume(resume_text: str, job_description: str = "") -> dict:
     model = os.getenv("OPENAI_MODEL") or "gpt-4o-mini"
     client = _client()
@@ -72,7 +91,7 @@ def analyse_resume(resume_text: str, job_description: str = "") -> dict:
         response_format={"type": "json_object"},
     )
     raw = response.choices[0].message.content or "{}"
-    return json.loads(raw)
+    return _parse_json(raw)
 
 
 def keyword_overlap(resume_text: str, job_description: str) -> dict:

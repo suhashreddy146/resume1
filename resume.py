@@ -98,7 +98,11 @@ def main() -> int:
         print("Error: no readable text found in the resume.", file=sys.stderr)
         return 1
 
-    result = analyse_resume(resume_text, job_description)
+    try:
+        result = analyse_resume(resume_text, job_description)
+    except Exception as exc:
+        print(f"Error: analysis failed - {exc}", file=sys.stderr)
+        return 1
     if not result:
         print("Error: analysis returned empty results.", file=sys.stderr)
         return 1
