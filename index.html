@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resume Analyser</title>
+<style>
+  :root {
+    --bg: #0f1420;
+    --panel: #161d2e;
+    --panel2: #1c2540;
+    --border: #2a3550;
+    --text: #e6ebf5;
+    --muted: #8b96ad;
+    --accent: #4f8cff;
+    --green: #34c98e;
+    --amber: #f5b544;
+    --red: #f0616d;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 60px; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  header h1 { font-size: 24px; letter-spacing: .5px; }
+  header h1 span { color: var(--accent); }
+  header p { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .badge { font-size: 12px; color: var(--accent); border: 1px solid var(--accent); padding: 4px 10px; border-radius: 999px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+  .panel h2 { font-size: 15px; margin-bottom: 12px; color: var(--text); }
+  .panel h2 small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  textarea {
+    width: 100%; min-height: 260px; resize: vertical;
+    background: var(--panel2); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); padding: 12px; font-size: 14px; line-height: 1.5; font-family: inherit;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  .drop {
+    border: 2px dashed var(--border); border-radius: 8px; padding: 14px;
+    text-align: center; color: var(--muted); font-size: 13px; cursor: pointer;
+    transition: border-color .2s; margin-bottom: 10px;
+  }
+  .drop:hover, .drop.drag { border-color: var(--accent); color: var(--text); }
+  .row { display: flex; gap: 10px; align-items: center; }
+  .btn {
+    background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: filter .15s;
+  }
+  .btn:hover { filter: brightness(1.1); }
+  .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .btn.ghost:hover { color: var(--text); border-color: var(--muted); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 10px; }
+  .result { margin-top: 22px; display: none; }
+  .scores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
+  .score {
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px; text-align: center;
+  }
+  .score .num { font-size: 36px; font-weight: 700; }
+  .score .lbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .score.good .num { color: var(--green); }
+  .score.mid .num { color: var(--amber); }
+  .score.bad .num { color: var(--red); }
+  .bar { height: 8px; background: var(--panel2); border-radius: 999px; margin-top: 10px; overflow: hidden; }
+  .bar > div { height: 100%; border-radius: 999px; transition: width .6s ease; }
+  .section { margin-bottom: 20px; }
+  .section h3 { font-size: 14px; margin-bottom: 10px; color: var(--accent); text-transform: uppercase; letter-spacing: .8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { font-size: 12px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel2); }
+  .chip.ok { border-color: var(--green); color: var(--green); }
+  .chip.warn { border-color: var(--red); color: var(--red); }
+  ul.list { list-style: none; }
+  ul.list li { padding: 7px 0 7px 22px; position: relative; font-size: 14px; line-height: 1.45; }
+  ul.list li::before { position: absolute; left: 0; top: 7px; }
+  ul.plus li::before { content: "+"; color: var(--green); font-weight: 700; }
+  ul.minus li::before { content: "–"; color: var(--red); font-weight: 700; }
+  ul.num li::before { content: "→"; color: var(--accent); }
+  .kw-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+  .kw { font-size: 12px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); }
+  .kw.found { border-color: var(--green); color: var(--green); }
+  .kw.missing { border-color: var(--red); color: var(--red); }
+  .summary-box {
+    background: var(--panel2); border-left: 3px solid var(--accent); border-radius: 8px;
+    padding: 14px; font-size: 14px; line-height: 1.6; white-space: pre-wrap;
+  }
+  .copy-btn { margin-top: 10px; }
+  .error { color: var(--red); font-size: 14px; margin-top: 12px; }
+  .spinner { display: none; margin-top: 14px; text-align: center; color: var(--muted); font-size: 14px; }
+  .spinner::before {
+    content: ""; display: inline-block; width: 16px; height: 16px; margin-right: 8px;
+    border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%;
+    animation: spin .8s linear infinite; vertical-align: -2px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 40px; }
+  @media (max-width: 760px) { .grid, .scores { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Resume <span>Analyser</span></h1>
+      <p>ATS keyword check &amp; resume review — runs 100% in your browser. Nothing is uploaded.</p>
+    </div>
+    <span class="badge">client-side</span>
+  </header>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Resume <small>.txt only — paste below or drag &amp; drop</small></h2>
+      <div class="drop" id="drop">Drag &amp; drop a .txt file here, or click to browse</div>
+      <input type="file" id="file" accept=".txt,text/plain" hidden>
+      <label for="resume">Or paste resume text</label>
+      <textarea id="resume" placeholder="Paste your resume text here…"></textarea>
+    </div>
+
+    <div class="panel">
+      <h2>Job description <small>optional — used for keyword matching</small></h2>
+      <label for="job">Paste the job description to match against</label>
+      <textarea id="job" placeholder="Paste the job description here (optional)…"></textarea>
+      <div class="row" style="margin-top:14px">
+        <button class="btn" id="run">Analyse</button>
+        <button class="btn ghost" id="clear">Clear</button>
+        <button class="btn ghost" id="sample">Load sample</button>
+      </div>
+      <div class="spinner" id="spinner">Analysing…</div>
+      <div class="error" id="error"></div>
+      <div class="hint">Scoring: section coverage, contact info, quantified bullets and keyword match against the job description.</div>
+    </div>
+  </div>
+
+  <div class="result" id="result">
+    <div class="scores">
+      <div class="score" id="s-overall"><div class="num" id="n-overall">–</div><div class="lbl">Overall score</div><div class="bar"><div id="b-overall" style="width:0"></div></div></div>
+      <div class="score" id="s-ats"><div class="num" id="n-ats">–</div><div class="lbl">ATS score</div><div class="bar"><div id="b-ats" style="width:0"></div></div></div>
+      <div class="score" id="s-kw"><div class="num" id="n-kw">–</div><div class="lbl">Keyword match</div><div class="bar"><div id="b-kw" style="width:0"></div></div></div>
+    </div>
+
+    <div class="section">
+      <h3>Sections</h3>
+      <div class="chips" id="sections"></div>
+    </div>
+
+    <div class="section">
+      <h3>Keyword match vs job description</h3>
+      <div class="kw-wrap" id="keywords"></div>
+    </div>
+
+    <div class="grid">
+      <div class="section">
+        <h3>Strengths</h3>
+        <ul class="list plus" id="strengths"></ul>
+      </div>
+      <div class="section">
+        <h3>Weaknesses</h3>
+        <ul class="list minus" id="weaknesses"></ul>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Suggested improvements</h3>
+      <ul class="list num" id="suggestions"></ul>
+    </div>
+
+    <div class="section">
+      <h3>Improved professional summary</h3>
+      <div class="summary-box" id="summary"></div>
+      <button class="btn ghost copy-btn" id="copy">Copy to clipboard</button>
+    </div>
+  </div>
+
+  <footer>Resume Analyser — self-contained single-file app.</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var $ = function (id) { return document.getElementById(id); };
+  var drop = $("drop"), fileInput = $("file"), resumeTa = $("resume"), jobTa = $("job");
+  var resultBox = $("result"), spinner = $("spinner"), errorBox = $("error");
+
+  var SECTION_PATTERNS = [
+    { name: "Contact", re: /\b(contact|email|phone|linkedin|github|address)\b/i },
+    { name: "Summary", re: /\b(summary|profile|objective|about me)\b/i },
+    { name: "Work Experience", re: /\b(experience|work history|employment|professional experience)\b/i },
+    { name: "Education", re: /\b(education|academics|university|degree|b\.?tech|m\.?tech|bachelor|master)\b/i },
+    { name: "Skills", re: /\b(skills?|technologies?|competencies|expertise|technical (skills|proficiencies))\b/i },
+    { name: "Projects", re: /\b(projects?|portfolio|achievements?)\b/i },
+    { name: "Certifications", re: /\b(certifications?|licenses?|courses?|training)\b/i },
+    { name: "Languages", re: /\b(languages?)\b/i },
+    { name: "References", re: /\b(references?)\b/i },
+    { name: "Interests", re: /\b(interests?|hobbies?|activities)\b/i }
+  ];
+
+  var STOPWORDS = new Set(("a an the and or of in on for to with is are be by as at that this it you your we our will can must should have has but not do did about into over after before between out up per from its been being while would could should also such than these those both each few more most other some only own same so very just all any every no not then there was were when where which who whom why how may might must shall").split(" "));
+
+  function scoreClass(el, v) {
+    el.classList.remove("good", "mid", "bad");
+    el.classList.add(v >= 70 ? "good" : v >= 45 ? "mid" : "bad");
+  }
+
+  function detectSections(text) {
+    var found = [];
+    SECTION_PATTERNS.forEach(function (p) {
+      if (p.re.test(text)) found.push(p.name);
+    });
+    return found;
+  }
+
+  function missingSections(found) {
+    var required = ["Contact", "Summary", "Work Experience", "Skills", "Education"];
+    return required.filter(function (r) { return found.indexOf(r) === -1; });
+  }
+
+  function contactCheck(text) {
+    var present = [];
+    var missing = [];
+    var lower = text.toLowerCase();
+    if (/\b[\w.+-]+@[\w-]+\.[\w.]+\b/.test(text)) present.push("Email"); else missing.push("Email");
+    if (/\b\+?\d[\d\s().-]{7,}\d\b/.test(text)) present.push("Phone"); else missing.push("Phone");
+    if (/linkedin\.com|linkedin/i.test(lower)) present.push("LinkedIn"); else missing.push("LinkedIn");
+    return { present: present, missing: missing };
+  }
+
+  function extractKeywords(jobText) {
+    var words = jobText.toLowerCase().match(/[a-z][a-z0-9+#.\-]{1,}/g) || [];
+    var freq = {};
+    words.forEach(function (w) {
+      if (STOPWORDS.has(w) || w.length < 3) return;
+      freq[w] = (freq[w] || 0) + 1;
+    });
+    var phraseMatches = jobText.match(/\b[a-z][a-z\-+ ]{3,40}?\b/gi) || [];
+    return Object.keys(freq)
+      .sort(function (a, b) { return freq[b] - freq[a]; })
+      .slice(0, 30);
+  }
+
+  function keywordCoverage(resumeText, jobText) {
+    var keywords = extractKeywords(jobText);
+    var lower = resumeText.toLowerCase();
+    var coverage = [];
+    var matched = 0;
+    keywords.forEach(function (kw) {
+      var hit = lower.indexOf(kw) !== -1;
+      if (hit) matched++;
+      coverage.push({ kw: kw, hit: hit });
+    });
+    var rate = keywords.length ? Math.round((matched / keywords.length) * 100) : 0;
+    return { coverage: coverage, rate: rate, matched: matched };
+  }
+
+  function countQuantified(text) {
+    var re = /\b(\d{1,3}(,\d{3})*(\+|\d{1,3})?%|\d{1,3}(,\d{3})*\+?|\$\d[\d,.]*|\d{1,2}[xX])\b|\b\d{2,3}%\b/g;
+    var m = text.match(/\b\d[\d,.]*%?\b/g) || [];
+    return m.length;
+  }
+
+  function hasActionVerbs(text) {
+    var verbs = /\b(led|built|developed|designed|created|implemented|improved|managed|launched|delivered|reduced|increased|optimized|automated|engineered|spearheaded|achieved|analysed|analyzed)\b/i;
+    return verbs.test(text);
+  }
+
+  function strengths(resumeText, found, contact, keywords) {
+    var out = [];
+    var words = resumeText.trim().split(/\s+/).length;
+    if (words > 60) out.push("Resume contains sufficient detail (" + words + " words).");
+    else out.push("Resume content is compact — easy for an ATS to parse.");
+    if (contact.present.length >= 2) out.push("Contact details (" + contact.present.join(", ") + ") are present.");
+    if (hasActionVerbs(resumeText)) out.push("Uses strong action verbs (led, built, developed, …).");
+    if (countQuantified(resumeText) >= 3) out.push("Quantifies achievements with numbers (good ATS signal).");
+    if (keywords && keywords.rate >= 60) out.push("Strong keyword alignment with the target job description.");
+    if (found.length >= 5) out.push("Clear section structure across the resume.");
+    return out;
+  }
+
+  function weaknesses(resumeText, contact, missingSecs, keywords) {
+    var out = [];
+    if (contact.missing.length) out.push("Missing contact info: " + contact.missing.join(", ") + ".");
+    missingSecs.forEach(function (s) {
+      out.push("No \"" + s + "\" section detected.");
+    });
+    var q = countQuantified(resumeText);
+    if (q < 3) out.push("Only " + q + " numeric/metric references found — add quantified achievements.");
+    if (!hasActionVerbs(resumeText)) out.push("No strong action verbs detected — rewrite bullets starting with action words.");
+    if (resumeText.trim().split(/\s+/).length < 60) out.push("Resume appears very short — expand each role with responsibilities and results.");
+    if (keywords && keywords.rate < 50) out.push("Low keyword match (" + keywords.rate + "%) against the job description.");
+    return out;
+  }
+
+  function suggestions(resumeText, missingSecs, contact, keywords) {
+    var out = [];
+    missingSecs.forEach(function (s) {
+      out.push("Add a \"" + s + "\" section — ATS systems look for it.");
+    });
+    if (contact.missing.indexOf("LinkedIn") !== -1) out.push("Add a LinkedIn profile URL to your contact line.");
+    if (countQuantified(resumeText) < 3) out.push("Replace vague phrases with numbers, e.g. \"increased page load time by 40%\".");
+    out.push("Keep the resume to 1–2 pages, 10pt+ font, and avoid tables, images and headers/footers (ATS-unfriendly).");
+    if (keywords && keywords.coverage.length) {
+      var miss = keywords.coverage.filter(function (c) { return !c.hit; }).map(function (c) { return c.kw; }).slice(0, 8);
+      if (miss.length) out.push("Mirror these job-description keywords where truthful: " + miss.join(", ") + ".");
+    }
+    return out;
+  }
+
+  function improveSummary(resumeText) {
+    var sentences = resumeText.replace(/\s+/g, " ").match(/[^.!?]+[.!?]+/g) || [];
+    var picks = [];
+    for (var i = 0; i < sentences.length && picks.length < 3; i++) {
+      var s = sentences[i].trim();
+      if (s.length > 25 && !/^[-•]/.test(s)) picks.push(s);
+    }
+    if (!picks.length) {
+      var words = resumeText.replace(/\s+/g, " ").trim();
+      picks = words ? [words.slice(0, 400)] : [];
+    }
+    var core = picks.join(" ");
+    if (countQuantified(resumeText) < 3) core += " Focus on measurable outcomes, e.g. \"improved X by Y%\".";
+    return "Results-driven professional with experience across " + (core ? core : "the stated domain") +
+      " Demonstrated ability to deliver measurable impact, collaborate across teams, and adapt to evolving priorities.";
+  }
+
+  function paintScore(id, val) {
+    $("n-" + id).textContent = val;
+    $("b-" + id).style.width = val + "%";
+    scoreClass($("s-" + id), val);
+  }
+
+  function paint(result) {
+    paintScore("overall", result.overall);
+    paintScore("ats", result.ats);
+    paintScore("kw", result.kwRate);
+
+    var sec = $("sections"); sec.innerHTML = "";
+    result.found.forEach(function (s) {
+      var c = document.createElement("span");
+      c.className = "chip ok"; c.textContent = s;
+      sec.appendChild(c);
+    });
+    result.missing.forEach(function (s) {
+      var c = document.createElement("span");
+      c.className = "chip warn"; c.textContent = "missing: " + s;
+      sec.appendChild(c);
+    });
+
+    var kw = $("keywords"); kw.innerHTML = "";
+    if (!result.coverage.length) {
+      kw.textContent = "Paste a job description to see keyword matching.";
+      kw.style.color = "#8b96ad"; kw.style.fontSize = "13px";
+    }
+    result.coverage.forEach(function (c) {
+      var span = document.createElement("span");
+      span.className = "kw " + (c.hit ? "found" : "missing");
+      span.textContent = c.kw + (c.hit ? " ✓" : " ✗");
+      kw.appendChild(span);
+    });
+
+    function fill(id, items, cls) {
+      var el = $(id); el.innerHTML = "";
+      items.forEach(function (t) {
+        var li = document.createElement("li");
+        li.textContent = t;
+        el.appendChild(li);
+      });
+    }
+    fill("strengths", result.strengths, "plus");
+    fill("weaknesses", result.weaknesses, "minus");
+    fill("suggestions", result.suggestions, "num");
+    $("summary").textContent = result.improvedSummary;
+    resultBox.style.display = "block";
+    resultBox.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function analyse() {
+    var resumeText = resumeTa.value.trim();
+    var jobText = jobTa.value.trim();
+    errorBox.textContent = "";
+    if (!resumeText) {
+      errorBox.textContent = "Please paste a resume (or load the sample) before analysing.";
+      return;
+    }
+
+    spinner.style.display = "block";
+    setTimeout(function () {
+      var found = detectSections(resumeText);
+      var missing = missingSections(found);
+      var contact = contactCheck(resumeText);
+      var kw = keywordCoverage(resumeText, jobText);
+
+      var sectionScore = Math.max(0, 100 - missing.length * 18);
+      var contactScore = contact.present.length === 0 ? 0 : (contact.present.length / 3) * 100;
+      var actionScore = hasActionVerbs(resumeText) ? 85 : 45;
+      var quantScore = Math.min(100, countQuantified(resumeText) * 14);
+      var lengthScore = resumeText.trim().split(/\s+/).length >= 120 ? 90 : 65;
+
+      var ats = Math.round(
+        sectionScore * 0.35 + contactScore * 0.2 + actionScore * 0.2 + quantScore * 0.15 + lengthScore * 0.1
+      );
+
+      var overall = jobText
+        ? Math.round(ats * 0.6 + kw.rate * 0.4)
+        : ats;
+
+      paint({
+        overall: Math.max(0, Math.min(100, overall)),
+        ats: Math.max(0, Math.min(100, ats)),
+        kwRate: jobText ? kw.rate : 0,
+        found: found,
+        missing: missing,
+        coverage: kw.coverage,
+        strengths: strengths(resumeText, found, contact, kw),
+        weaknesses: weaknesses(resumeText, contact, missing, kw),
+        suggestions: suggestions(resumeText, missing, contact, kw),
+        improvedSummary: improveSummary(resumeText)
+      });
+      spinner.style.display = "none";
+    }, 120);
+  }
+
+  drop.addEventListener("click", function () { fileInput.click(); });
+  drop.addEventListener("dragover", function (e) { e.preventDefault(); drop.classList.add("drag"); });
+  drop.addEventListener("dragleave", function () { drop.classList.remove("drag"); });
+  drop.addEventListener("drop", function (e) {
+    e.preventDefault(); drop.classList.remove("drag");
+    var f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  });
+  fileInput.addEventListener("change", function () {
+    if (fileInput.files[0]) handleFile(fileInput.files[0]);
+    fileInput.value = "";
+  });
+
+  function handleFile(file) {
+    if (!/\.txt$|text\/plain/i.test(file.name) && file.type !== "text/plain") {
+      errorBox.textContent = "Only .txt files can be read in the browser. For .pdf/.docx, open the CLI version (analyse.py).";
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function () { resumeTa.value = reader.result; };
+    reader.readAsText(file);
+  }
+
+  $("run").addEventListener("click", analyse);
+  $("clear").addEventListener("click", function () {
+    resumeTa.value = ""; jobTa.value = ""; errorBox.textContent = "";
+    resultBox.style.display = "none";
+  });
+  $("sample").addEventListener("click", function () {
+    resumeTa.value = [
+      "John Doe",
+      "john.doe@example.com | +1 555-010-2345 | linkedin.com/in/johndoe",
+      "",
+      "SUMMARY",
+      "Software engineer with 5 years of experience building web applications.",
+      "",
+      "SKILLS",
+      "Python, JavaScript, React, Node.js, SQL, Docker, AWS, REST APIs",
+      "",
+      "WORK EXPERIENCE",
+      "Senior Software Engineer — Acme Corp (2021–Present)",
+      "- Led migration of legacy monolith to microservices, reducing deploy time by 60%.",
+      "- Built a real-time dashboard used by 2,000+ internal users.",
+      "",
+      "Software Engineer — Beta Inc (2019–2021)",
+      "- Developed REST APIs in Python and Node.js serving 1M requests/day.",
+      "",
+      "EDUCATION",
+      "B.Tech in Computer Science — Example University (2015–2019)",
+      "",
+      "PROJECTS",
+      "Open-source CLI tool with 500 GitHub stars.",
+      "",
+      "CERTIFICATIONS",
+      "AWS Solutions Architect — Associate",
+      "Certified Kubernetes Administrator"
+    ].join("\n");
+    jobTa.value = [
+      "We are looking for a Senior Software Engineer with experience in Python,",
+      "JavaScript, React, Node.js, Docker, Kubernetes and AWS. You will design",
+      "REST APIs, work with SQL databases, and lead engineering projects."
+    ].join("\n");
+    errorBox.textContent = "";
+  });
+
+  $("copy").addEventListener("click", function () {
+    var text = $("summary").textContent;
+    navigator.clipboard.writeText(text).then(function () {
+      var btn = $("copy");
+      btn.textContent = "Copied!";
+      setTimeout(function () { btn.textContent = "Copy to clipboard"; }, 1500);
+    });
+  });
+})();
+</script>
+</body>
+</html>
